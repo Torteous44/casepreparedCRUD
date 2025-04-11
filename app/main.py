@@ -22,4 +22,10 @@ app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def health_check():
-    return {"status": "ok", "message": "CasePrepared CRUD API is up and running!"} 
+    return {"status": "ok", "message": "CasePrepared CRUD API is up and running!"}
+
+# This is only used when running the app directly with "python app/main.py"
+# For deployment, you'll typically use a proper server like Uvicorn
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000) 
