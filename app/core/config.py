@@ -1,7 +1,8 @@
 import os
-from typing import Optional
+from typing import Optional, List, Union
 from pydantic_settings import BaseSettings
 from dotenv import load_dotenv
+from pydantic import AnyHttpUrl, validator
 
 load_dotenv()
 
@@ -23,9 +24,9 @@ class Settings(BaseSettings):
     )
     
     # JWT settings
-    SECRET_KEY: str = os.getenv("SECRET_KEY", "your_secret_key_here")
-    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "supersecretkey")
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24 * 7  # 7 days
     
     # Stripe settings
     STRIPE_API_KEY: Optional[str] = os.getenv("STRIPE_API_KEY")
@@ -53,15 +54,35 @@ class Settings(BaseSettings):
     
     # Cloudflare settings
     CLOUDFLARE_API_KEY: Optional[str] = os.getenv("CLOUDFLARE_API_KEY")
-    CLOUDFLARE_ACCOUNT_ID: Optional[str] = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+    CLOUDFLARE_ACCOUNT_ID: str = os.getenv("CLOUDFLARE_ACCOUNT_ID", "")
+    CLOUDFLARE_API_TOKEN: str = os.getenv("CLOUDFLARE_API_TOKEN", "")
+    CLOUDFLARE_IMAGES_DELIVERY_URL: str = os.getenv("CLOUDFLARE_IMAGES_DELIVERY_URL", "")
     
     # Admin settings
-    ADMIN_PASSWORD: Optional[str] = os.getenv("ADMIN_PASSWORD")
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "")
+
+    # CORS
+    BACKEND_CORS_ORIGINS: List[AnyHttpUrl] = []
+
+    @validator("BACKEND_CORS_ORIGINS", pre=True)
+    def assemble_cors_origins(cls, v: Union[str, List[str]]) -> Union[List[str], str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, (list, str)):
+            return v
+        raise ValueError(v)
+
+    @validator("DATABASE_URL", pre=True)
+    def assemble_db_connection(cls, v: Optional[str], values: dict) -> str:
+        if v:
+            return v
+        return f"postgresql://{values.get('DB_USER')}:{values.get('DB_PASSWORD')}@{values.get('DB_HOST')}:{values.get('DB_PORT')}/{values.get('DB_NAME')}"
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
         extra = "ignore"  # Ignore extra fields from .env file
+        case_sensitive = True
 
 
 settings = Settings() 

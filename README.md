@@ -33,6 +33,30 @@ This repository contains the CRUD (Create, Read, Update, Delete) microservice fo
 - **JWT**: Authentication mechanism
 - **Stripe**: Payment processing
 
+## Environment Variables
+
+The application requires the following environment variables:
+
+```
+# Database
+DATABASE_URL=postgresql://user:password@localhost:5432/caseprepared
+
+# JWT
+SECRET_KEY=your_secret_key_here
+ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
+
+# Admin
+ADMIN_EMAIL=admin@example.com
+ADMIN_NAME=Admin User
+ADMIN_PASSWORD=secure_password
+
+# Cloudflare Images
+CLOUDFLARE_ACCOUNT_ID=your_account_id
+CLOUDFLARE_API_TOKEN=your_api_token
+CLOUDFLARE_IMAGES_DELIVERY_URL=https://imagedelivery.net/your_delivery_id
+```
+
 ## Getting Started
 
 ### Prerequisites
