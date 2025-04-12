@@ -21,10 +21,12 @@ class UserUpdate(BaseModel):
     email: Optional[EmailStr] = None
     full_name: Optional[str] = None
     password: Optional[str] = None
+    is_admin: Optional[bool] = None
 
 # Properties shared by models stored in DB
 class UserInDBBase(UserBase):
     id: UUID
+    is_admin: bool = False
     created_at: datetime
     updated_at: datetime
 

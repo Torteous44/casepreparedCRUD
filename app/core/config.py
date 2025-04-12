@@ -39,9 +39,6 @@ class Settings(BaseSettings):
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
     FRONTEND_BASE_URL: str = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
     
-    # Admin settings
-    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "CasePreparedAdmin2025!")
-    
     # OpenAI settings
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     OPENAI_API_KEY_BACKUP_1: Optional[str] = os.getenv("OPENAI_API_KEY_BACKUP_1")
@@ -57,10 +54,14 @@ class Settings(BaseSettings):
     # Cloudflare settings
     CLOUDFLARE_API_KEY: Optional[str] = os.getenv("CLOUDFLARE_API_KEY")
     CLOUDFLARE_ACCOUNT_ID: Optional[str] = os.getenv("CLOUDFLARE_ACCOUNT_ID")
+    
+    # Admin settings
+    ADMIN_PASSWORD: Optional[str] = os.getenv("ADMIN_PASSWORD")
 
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"  # Ignore extra fields from .env file
 
 
 settings = Settings() 

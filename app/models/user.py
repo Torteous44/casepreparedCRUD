@@ -1,6 +1,6 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import Column, String, DateTime
+from sqlalchemy import Column, String, DateTime, Boolean
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.db.session import Base
@@ -13,5 +13,6 @@ class User(Base):
     full_name = Column(String, nullable=False)
     password_hash = Column(String, nullable=True)
     google_oauth_id = Column(String, nullable=True)
+    is_admin = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow) 
