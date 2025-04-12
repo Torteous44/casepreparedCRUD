@@ -18,15 +18,27 @@ def read_interviews(
     *,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: bool = Depends(get_subscription_active),
     skip: int = 0,
     limit: int = 100,
     status: Optional[str] = Query(None),
+    user_id: Optional[str] = Query(None),
 ) -> Any:
     """
     Retrieve interviews for the current user
     """
-    filters = {"user_id": current_user.id}
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        # Import here to avoid circular import
+        from app.auth.dependencies import get_subscription_active
+        get_subscription_active(current_user=current_user, db=db)
+    
+    # If admin and user_id specified, get that user's interviews
+    if current_user.is_admin and user_id:
+        filters = {"user_id": user_id}
+    else:
+        # Regular users can only get their own interviews
+        filters = {"user_id": current_user.id}
+        
     if status:
         filters["status"] = status
     
@@ -41,11 +53,16 @@ def create_interview(
     db: Session = Depends(get_db),
     interview_in: InterviewCreate,
     current_user: User = Depends(get_current_user),
-    _: bool = Depends(get_subscription_active),
 ) -> Any:
     """
     Create new interview session
     """
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        # Import here to avoid circular import
+        from app.auth.dependencies import get_subscription_active
+        get_subscription_active(current_user=current_user, db=db)
+    
     # Verify that the template exists
     template = template_service.get_template_by_id(db=db, template_id=interview_in.template_id)
     if not template:
@@ -65,11 +82,16 @@ def read_interview(
     db: Session = Depends(get_db),
     interview_id: str,
     current_user: User = Depends(get_current_user),
-    _: bool = Depends(get_subscription_active),
 ) -> Any:
     """
     Get interview by ID
     """
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        # Import here to avoid circular import
+        from app.auth.dependencies import get_subscription_active
+        get_subscription_active(current_user=current_user, db=db)
+    
     interview = interview_service.get_interview_by_id(db=db, interview_id=interview_id)
     if not interview:
         raise HTTPException(
@@ -77,8 +99,8 @@ def read_interview(
             detail="Interview not found",
         )
     
-    # Ensure user can only access their own interviews
-    if interview.user_id != current_user.id:
+    # Ensure user can only access their own interviews unless they're an admin
+    if interview.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to access this interview")
     
     return interview
@@ -90,11 +112,16 @@ def update_interview(
     interview_id: str,
     interview_in: InterviewUpdate,
     current_user: User = Depends(get_current_user),
-    _: bool = Depends(get_subscription_active),
 ) -> Any:
     """
     Update interview status or metadata
     """
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        # Import here to avoid circular import
+        from app.auth.dependencies import get_subscription_active
+        get_subscription_active(current_user=current_user, db=db)
+    
     interview = interview_service.get_interview_by_id(db=db, interview_id=interview_id)
     if not interview:
         raise HTTPException(
@@ -102,8 +129,8 @@ def update_interview(
             detail="Interview not found",
         )
     
-    # Ensure user can only update their own interviews
-    if interview.user_id != current_user.id:
+    # Ensure user can only update their own interviews unless they're an admin
+    if interview.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to update this interview")
     
     interview = interview_service.update_interview(
@@ -117,11 +144,16 @@ def generate_credentials(
     db: Session = Depends(get_db),
     interview_id: str,
     current_user: User = Depends(get_current_user),
-    _: bool = Depends(get_subscription_active),
 ) -> Any:
     """
     Generate ephemeral session credentials for the interview
     """
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        # Import here to avoid circular import
+        from app.auth.dependencies import get_subscription_active
+        get_subscription_active(current_user=current_user, db=db)
+    
     interview = interview_service.get_interview_by_id(db=db, interview_id=interview_id)
     if not interview:
         raise HTTPException(
@@ -129,8 +161,8 @@ def generate_credentials(
             detail="Interview not found",
         )
     
-    # Ensure user can only get credentials for their own interviews
-    if interview.user_id != current_user.id:
+    # Ensure user can only get credentials for their own interviews unless they're an admin
+    if interview.user_id != current_user.id and not current_user.is_admin:
         raise HTTPException(status_code=403, detail="Not authorized to access this interview")
     
     # Generate TURN credentials and session token
@@ -146,4 +178,28 @@ def generate_credentials(
     return {
         "turn_credentials": turn_credentials,
         "session_token": session_token,
-    } 
+    }
+
+@router.delete("/{interview_id}", status_code=204)
+def delete_interview(
+    *,
+    db: Session = Depends(get_db),
+    interview_id: str,
+    current_user: User = Depends(get_current_user),
+) -> None:
+    """
+    Delete an interview
+    """
+    interview = interview_service.get_interview_by_id(db=db, interview_id=interview_id)
+    if not interview:
+        raise HTTPException(
+            status_code=404,
+            detail="Interview not found",
+        )
+    
+    # Ensure user can only delete their own interviews unless they're an admin
+    if interview.user_id != current_user.id and not current_user.is_admin:
+        raise HTTPException(status_code=403, detail="Not authorized to delete this interview")
+    
+    interview_service.delete_interview(db=db, interview_id=interview_id)
+    return None 

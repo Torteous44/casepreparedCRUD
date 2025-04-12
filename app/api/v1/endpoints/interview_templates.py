@@ -21,7 +21,6 @@ def read_templates(
     *,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    _: bool = Depends(get_subscription_active),
     skip: int = 0,
     limit: int = 100,
     case_type: Optional[str] = Query(None),
@@ -33,6 +32,12 @@ def read_templates(
     """
     Retrieve templates with optional filtering
     """
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        # Import here to avoid circular import
+        from app.auth.dependencies import get_subscription_active
+        get_subscription_active(current_user=current_user, db=db)
+        
     filters = {}
     if case_type:
         filters["case_type"] = case_type
@@ -56,11 +61,16 @@ def read_template(
     db: Session = Depends(get_db),
     template_id: str,
     current_user: User = Depends(get_current_user),
-    _: bool = Depends(get_subscription_active),
 ) -> Any:
     """
     Get template by ID
     """
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        # Import here to avoid circular import
+        from app.auth.dependencies import get_subscription_active
+        get_subscription_active(current_user=current_user, db=db)
+        
     template = template_service.get_template_by_id(db=db, template_id=template_id)
     if not template:
         raise HTTPException(
