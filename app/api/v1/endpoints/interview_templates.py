@@ -1,16 +1,17 @@
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, get_subscription_active, get_admin_user
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.interview_template import (
-    InterviewTemplate,
     InterviewTemplateCreate,
     InterviewTemplateList,
     InterviewTemplateUpdate,
+    InterviewTemplate,
 )
 from app.services import interview_template as template_service
 
