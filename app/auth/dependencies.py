@@ -41,6 +41,9 @@ def get_admin_user(
     For admin access using a direct password from environment variables.
     If admin password matches, returns the first user or creates an admin user.
     """
+    from app.models.user import User
+    import uuid
+    
     token = credentials.credentials
     
     # Check if the token matches the admin password
@@ -55,9 +58,6 @@ def get_admin_user(
     user = db.query(User).first()
     if not user:
         # If no users exist, create an admin user
-        from app.models.user import User
-        import uuid
-        
         admin_user = User(
             id=uuid.uuid4(),
             email="admin@caseprepared.com",
