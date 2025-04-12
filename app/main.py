@@ -22,7 +22,8 @@ app.add_middleware(
         "http://127.0.0.1:8000",
         "http://127.0.0.1:8001",
         "https://caseprepared.com", 
-        "https://www.caseprepared.com"
+        "https://www.caseprepared.com",
+        "https://admin.caseprepared.com"
     ],
     allow_credentials=True,
     allow_methods=["*"],
