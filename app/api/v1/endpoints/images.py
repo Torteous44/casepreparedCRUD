@@ -3,7 +3,7 @@ from typing import Any, Dict
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user, get_subscription_active
+from app.auth.dependencies import get_current_user, get_subscription_active, get_admin_user, get_admin_with_subscription
 from app.db.session import get_db
 from app.models.user import User
 from app.services import cloudflare as cloudflare_service
@@ -12,11 +12,12 @@ router = APIRouter()
 
 @router.post("/upload-url", response_model=Dict[str, Any])
 def get_upload_url(
-    current_user: User = Depends(get_current_user),
-    is_subscribed: bool = Depends(get_subscription_active),
+    current_user: User = Depends(get_admin_user),
+    is_subscribed: bool = Depends(get_admin_with_subscription),
 ) -> Any:
     """
     Get a direct upload URL for Cloudflare Images (client-side upload)
+    Admin endpoint protected with admin password
     """
     upload_url_data = cloudflare_service.get_cloudflare_direct_upload_url()
     
@@ -31,12 +32,13 @@ def get_upload_url(
 @router.post("/upload", response_model=Dict[str, Any])
 async def upload_image(
     file: UploadFile = File(...),
-    current_user: User = Depends(get_current_user),
-    is_subscribed: bool = Depends(get_subscription_active),
+    current_user: User = Depends(get_admin_user),
+    is_subscribed: bool = Depends(get_admin_with_subscription),
     db: Session = Depends(get_db),
 ) -> Any:
     """
     Upload an image to Cloudflare Images (server-side upload)
+    Admin endpoint protected with admin password
     """
     try:
         content = await file.read()

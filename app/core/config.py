@@ -39,6 +39,9 @@ class Settings(BaseSettings):
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
     FRONTEND_BASE_URL: str = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
     
+    # Admin settings
+    ADMIN_PASSWORD: str = os.getenv("ADMIN_PASSWORD", "CasePreparedAdmin2025!")
+    
     # OpenAI settings
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     OPENAI_API_KEY_BACKUP_1: Optional[str] = os.getenv("OPENAI_API_KEY_BACKUP_1")

@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.orm import Session
 
-from app.auth.dependencies import get_current_user, get_subscription_active
+from app.auth.dependencies import get_current_user, get_subscription_active, get_admin_user, get_admin_with_subscription
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.interview_template import (
@@ -75,12 +75,13 @@ def create_template(
     *,
     db: Session = Depends(get_db),
     template_in: InterviewTemplateCreate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_admin_user),
+    _: bool = Depends(get_admin_with_subscription),
 ) -> Any:
     """
-    Create new template (admin only in a real system)
+    Create new template (admin only)
+    Admin endpoint protected with admin password
     """
-    # In a real system, you would check if the user is an admin
     template = template_service.create_template(db=db, template_in=template_in)
     return template
 
@@ -100,13 +101,13 @@ def create_template_admin(
     question2: Question = Body(...),
     question3: Question = Body(...),
     question4: Question = Body(...),
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_admin_user),
+    _: bool = Depends(get_admin_with_subscription),
 ) -> Any:
     """
     Admin endpoint for creating a new template with structured questions
+    Admin endpoint protected with admin password
     """
-    # In a real system, you would check if the user is an admin
-    
     # Construct the template structure
     structure = {
         "question1": {
@@ -149,10 +150,12 @@ def update_template(
     db: Session = Depends(get_db),
     template_id: str,
     template_in: InterviewTemplateUpdate,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_admin_user),
+    _: bool = Depends(get_admin_with_subscription),
 ) -> Any:
     """
-    Update a template (admin only in a real system)
+    Update a template (admin only)
+    Admin endpoint protected with admin password
     """
     template = template_service.get_template_by_id(db=db, template_id=template_id)
     if not template:
@@ -161,7 +164,6 @@ def update_template(
             detail="Template not found",
         )
     
-    # In a real system, you would check if the user is an admin
     template = template_service.update_template(
         db=db, db_template=template, template_in=template_in
     )
@@ -172,10 +174,12 @@ def delete_template(
     *,
     db: Session = Depends(get_db),
     template_id: str,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(get_admin_user),
+    _: bool = Depends(get_admin_with_subscription),
 ) -> Any:
     """
-    Delete a template (admin only in a real system)
+    Delete a template (admin only)
+    Admin endpoint protected with admin password
     """
     template = template_service.get_template_by_id(db=db, template_id=template_id)
     if not template:
@@ -184,6 +188,5 @@ def delete_template(
             detail="Template not found",
         )
     
-    # In a real system, you would check if the user is an admin
     success = template_service.delete_template(db=db, template_id=template_id)
     return {"success": success} 
