@@ -15,6 +15,7 @@ class InterviewTemplate(Base):
     company = Column(String, nullable=True)
     industry = Column(String, nullable=True)
     prompt = Column(Text, nullable=False)
+    image_url = Column(String, nullable=True)  # URL to an image representing the case
     structure = Column(JSONB, nullable=False)  # Contains question prompts and context for 4 questions
     version = Column(String, default="1.0")
     created_at = Column(DateTime, default=datetime.utcnow)

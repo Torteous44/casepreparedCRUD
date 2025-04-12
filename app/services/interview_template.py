@@ -39,6 +39,7 @@ def create_template(db: Session, template_in: InterviewTemplateCreate) -> Interv
         company=template_in.company,
         industry=template_in.industry,
         prompt=template_in.prompt,
+        image_url=template_in.image_url,
         structure=template_in.structure,
         version=template_in.version,
     )

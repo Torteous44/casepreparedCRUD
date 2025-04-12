@@ -38,6 +38,22 @@ class Settings(BaseSettings):
     # Server settings
     API_BASE_URL: str = os.getenv("API_BASE_URL", "http://localhost:8000")
     FRONTEND_BASE_URL: str = os.getenv("FRONTEND_BASE_URL", "http://localhost:3000")
+    
+    # OpenAI settings
+    OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
+    OPENAI_API_KEY_BACKUP_1: Optional[str] = os.getenv("OPENAI_API_KEY_BACKUP_1")
+    OPENAI_API_KEY_BACKUP_2: Optional[str] = os.getenv("OPENAI_API_KEY_BACKUP_2")
+    
+    # Twilio settings
+    TWILIO_ACCOUNT_SID: Optional[str] = os.getenv("TWILIO_ACCOUNT_SID")
+    TWILIO_AUTH_TOKEN: Optional[str] = os.getenv("TWILIO_AUTH_TOKEN")
+    
+    # AssemblyAI settings
+    ASSEMBLY_AI_API_KEY: Optional[str] = os.getenv("ASSEMBLY_AI_API_KEY")
+    
+    # Cloudflare settings
+    CLOUDFLARE_API_KEY: Optional[str] = os.getenv("CLOUDFLARE_API_KEY")
+    CLOUDFLARE_ACCOUNT_ID: Optional[str] = os.getenv("CLOUDFLARE_ACCOUNT_ID")
 
     class Config:
         env_file = ".env"
