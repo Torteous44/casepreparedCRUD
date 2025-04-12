@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
+from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Path
 from sqlalchemy.orm import Session
 
 from app.auth.dependencies import get_current_user, get_subscription_active
@@ -202,4 +203,61 @@ def delete_interview(
         raise HTTPException(status_code=403, detail="Not authorized to delete this interview")
     
     interview_service.delete_interview(db=db, interview_id=interview_id)
-    return None 
+    return None
+
+@router.get("/{interview_id}/questions/{question_number}/token", response_model=Dict[str, Any])
+def generate_question_session_token(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    interview_id: UUID = Path(...),
+    question_number: int = Path(..., ge=1, le=4),
+    ttl: int = Query(3600, ge=300, le=7200)
+) -> Any:
+    """
+    Generate a realtime session token for a specific interview question
+    
+    Args:
+        interview_id: The ID of the interview
+        question_number: The question number (1-4)
+        ttl: Time to live in seconds (default: 1 hour, min: 5 min, max: 2 hours)
+    
+    Returns:
+        Session token object compatible with OpenAI's Realtime API
+    """
+    # Get the interview
+    interview = interview_service.get_interview_by_id(db, interview_id)
+    if not interview:
+        raise HTTPException(status_code=404, detail="Interview not found")
+    
+    # Verify user owns the interview or is admin
+    if not current_user.is_admin and interview.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to access this interview")
+    
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        get_subscription_active(current_user=current_user, db=db)
+    
+    # Check if the interview is in progress
+    if interview.status != "in-progress":
+        raise HTTPException(status_code=400, detail="Interview is not in progress")
+    
+    # Get current question from progress data
+    current_question = interview.progress_data.get("current_question", 1) if interview.progress_data else 1
+    
+    # Only allow access to current or previous questions
+    if question_number > current_question:
+        raise HTTPException(status_code=400, detail="Cannot access future questions")
+    
+    # Generate the session token
+    try:
+        session_token = credential_service.generate_session_token_for_question(
+            db=db,
+            interview_id=interview_id,
+            user_id=current_user.id,
+            question_number=question_number,
+            ttl=ttl
+        )
+        return session_token
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) 

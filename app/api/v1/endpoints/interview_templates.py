@@ -133,5 +133,10 @@ def delete_template(
             detail="Template not found",
         )
     
-    template_service.delete_template(db=db, template_id=template_id)
+    success = template_service.delete_template(db=db, template_id=template_id)
+    if not success:
+        raise HTTPException(
+            status_code=400,
+            detail="Unable to delete template. It may be referenced by existing interviews."
+        )
     return None 

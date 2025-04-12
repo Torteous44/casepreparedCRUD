@@ -19,4 +19,4 @@ class Interview(Base):
     
     # Relationships
     user = relationship("User", backref="interviews")
-    template = relationship("InterviewTemplate", backref="interviews") 
+    template = relationship("InterviewTemplate", back_populates="interviews") 

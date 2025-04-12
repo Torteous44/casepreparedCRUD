@@ -13,6 +13,10 @@ class InterviewTemplateBase(BaseModel):
     prompt: str
     structure: Dict[str, Any]
     image_url: Optional[str] = None
+    title: Optional[str] = None
+    description_short: Optional[str] = None
+    description_long: Optional[str] = None
+    duration: Optional[int] = None
     version: str = "1.0"
 
 # Properties to receive via API on creation
@@ -29,6 +33,10 @@ class InterviewTemplateUpdate(BaseModel):
     prompt: Optional[str] = None
     structure: Optional[Dict[str, Any]] = None
     image_url: Optional[str] = None
+    title: Optional[str] = None
+    description_short: Optional[str] = None
+    description_long: Optional[str] = None
+    duration: Optional[int] = None
     version: Optional[str] = None
 
 # Properties shared by models stored in DB
@@ -56,6 +64,9 @@ class InterviewTemplateList(BaseModel):
     company: Optional[str] = None
     industry: Optional[str] = None
     image_url: Optional[str] = None
+    title: Optional[str] = None
+    description_short: Optional[str] = None
+    duration: Optional[int] = None
     version: str
 
     model_config = ConfigDict(from_attributes=True) 

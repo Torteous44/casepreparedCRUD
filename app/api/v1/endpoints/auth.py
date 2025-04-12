@@ -14,6 +14,8 @@ from app.schemas.token import Token
 from app.schemas.user import UserCreate, UserCreateOAuth
 from app.services import user as user_service
 
+from pydantic import BaseModel
+
 router = APIRouter()
 
 @router.post("/register", response_model=Token)
@@ -88,6 +90,34 @@ def login_google(*, db: Session = Depends(get_db), token: str) -> Any:
             google_oauth_id=user_info.get("sub"),
         )
         user = user_service.create_oauth_user(db, user_in=user_in)
+    
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        subject=str(user.id), expires_delta=access_token_expires
+    )
+    
+    return {"access_token": access_token, "token_type": "bearer"}
+
+# Add new endpoint for JSON login
+class LoginRequest(BaseModel):
+    email: str
+    password: str
+
+@router.post("/json-login", response_model=Token)
+def login_json(
+    login_data: LoginRequest, db: Session = Depends(get_db)
+) -> Any:
+    """
+    JSON login endpoint for frontend applications
+    """
+    user = user_service.authenticate_user(
+        db, email=login_data.email, password=login_data.password
+    )
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect email or password",
+        )
     
     access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(

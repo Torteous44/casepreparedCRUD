@@ -63,7 +63,14 @@ def update_template(
 def delete_template(db: Session, template_id: UUID) -> bool:
     template = get_template_by_id(db, template_id)
     if template:
-        db.delete(template)
-        db.commit()
-        return True
+        try:
+            db.delete(template)
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            # If you want to log the error for debugging
+            # import logging
+            # logging.error(f"Error deleting template: {str(e)}")
+            return False
     return False 

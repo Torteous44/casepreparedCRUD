@@ -184,6 +184,10 @@ Admin users have the following privileges:
     }
   },
   "image_url": "https://example.com/images/market_entry.jpg",
+  "title": "Smart Home Market Entry Case",
+  "description_short": "Explore entry strategies for the smart home market",
+  "description_long": "This case examines the challenges and opportunities of entering the competitive smart home device market, exploring market sizing, customer segmentation, go-to-market strategies, and risk assessment.",
+  "duration": 45,
   "version": "1.0"
 }
 ```
@@ -217,6 +221,10 @@ Admin users have the following privileges:
     }
   },
   "image_url": "https://example.com/images/market_entry.jpg",
+  "title": "Smart Home Market Entry Case",
+  "description_short": "Explore entry strategies for the smart home market",
+  "description_long": "This case examines the challenges and opportunities of entering the competitive smart home device market, exploring market sizing, customer segmentation, go-to-market strategies, and risk assessment.",
+  "duration": 45,
   "version": "1.0",
   "created_at": "2023-01-01T12:00:00Z",
   "updated_at": "2023-01-01T12:00:00Z"
@@ -653,6 +661,10 @@ function TemplateForm({ templateId }) {
       question4: { prompt: '', context: '' }
     },
     image_url: '',
+    title: '',
+    description_short: '',
+    description_long: '',
+    duration: 30,
     version: '1.0'
   });
 
@@ -759,6 +771,55 @@ function TemplateForm({ templateId }) {
       {error && <div className="error">{error}</div>}
       
       <form onSubmit={handleSubmit}>
+        <div className="form-group">
+          <label htmlFor="title">Title</label>
+          <input
+            type="text"
+            id="title"
+            name="title"
+            value={template.title || ''}
+            onChange={handleChange}
+            placeholder="User-friendly title for the template"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="description_short">Short Description</label>
+          <input
+            type="text"
+            id="description_short"
+            name="description_short"
+            value={template.description_short || ''}
+            onChange={handleChange}
+            placeholder="A brief tagline or summary"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="description_long">Detailed Description</label>
+          <textarea
+            id="description_long"
+            name="description_long"
+            value={template.description_long || ''}
+            onChange={handleChange}
+            rows="4"
+            placeholder="Detailed description of what the case covers"
+          />
+        </div>
+        
+        <div className="form-group">
+          <label htmlFor="duration">Duration (minutes)</label>
+          <input
+            type="number"
+            id="duration"
+            name="duration"
+            value={template.duration || 30}
+            onChange={handleChange}
+            min="10"
+            max="120"
+          />
+        </div>
+
         <div className="form-group">
           <label htmlFor="case_type">Case Type</label>
           <input
@@ -936,6 +997,10 @@ Common error codes:
 | prompt | text | Main case prompt | Yes |
 | structure | JSON | Question structure with prompts and context | Yes |
 | image_url | string | URL to an image for the template | No |
+| title | string | User-friendly title for the template | No |
+| description_short | string | Short description or tagline | No |
+| description_long | text | Detailed description of the case | No |
+| duration | integer | Estimated duration in minutes | No |
 | version | string | Template version | Default: "1.0" |
 | created_at | datetime | When the template was created | Auto-generated |
 | updated_at | datetime | When the template was last updated | Auto-updated |
