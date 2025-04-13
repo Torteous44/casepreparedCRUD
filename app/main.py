@@ -23,9 +23,10 @@ app.add_middleware(
         "http://127.0.0.1:8001",
         "https://caseprepared.com", 
         "https://www.caseprepared.com",
-        "https://admin.caseprepared.com"
-        "https://stagingcaseprepared.vercel.app/"
-        "https://stagingcaseprepared.vercel.app"
+        "https://admin.caseprepared.com",
+        "https://stagingcaseprepared.vercel.app/",
+        "https://stagingcaseprepared.vercel.app",
+        "*"
 
     ],
     allow_credentials=True,
