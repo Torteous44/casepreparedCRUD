@@ -24,6 +24,9 @@ app.add_middleware(
         "https://caseprepared.com", 
         "https://www.caseprepared.com",
         "https://admin.caseprepared.com"
+        "https://stagingcaseprepared.vercel.app/"
+        "https://stagingcaseprepared.vercel.app"
+
     ],
     allow_credentials=True,
     allow_methods=["*"],
