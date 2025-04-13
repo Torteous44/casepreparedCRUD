@@ -11,4 +11,6 @@ python-multipart>=0.0.5
 email-validator>=2.0.0
 stripe>=5.0.0
 python-dotenv>=1.0.0 
-cloudinary>=1.33.0  
+cloudinary>=1.33.0
+requests>=2.32.0
+twilio>=8.4.0  

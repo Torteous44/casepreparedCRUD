@@ -69,4 +69,14 @@ class InterviewTemplateList(BaseModel):
     duration: Optional[int] = None
     version: str
 
-    model_config = ConfigDict(from_attributes=True) 
+    model_config = ConfigDict(from_attributes=True)
+
+# Template with user's progress
+class InterviewTemplateWithProgress(InterviewTemplateList):
+    progress_status: Optional[str] = None
+    progress_data: Optional[Dict[str, Any]] = None
+    interview_id: Optional[UUID] = None
+    started_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    questions_completed: Optional[int] = None
+    total_questions: int = 4 

@@ -34,4 +34,8 @@ class Interview(InterviewInDBBase):
 
 # Properties stored in DB
 class InterviewInDB(InterviewInDBBase):
-    pass 
+    pass
+
+# Interview with Template Data
+class InterviewWithTemplate(Interview):
+    template: Dict[str, Any] = None 

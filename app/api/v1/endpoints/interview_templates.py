@@ -12,8 +12,10 @@ from app.schemas.interview_template import (
     InterviewTemplateList,
     InterviewTemplateUpdate,
     InterviewTemplate,
+    InterviewTemplateWithProgress,
 )
 from app.services import interview_template as template_service
+from app.services import interview as interview_service
 
 router = APIRouter()
 
@@ -55,6 +57,100 @@ def read_templates(
         db=db, skip=skip, limit=limit, filters=filters
     )
     return templates
+
+@router.get("/with-progress", response_model=List[InterviewTemplateWithProgress])
+def read_templates_with_progress(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    skip: int = 0,
+    limit: int = 100,
+    case_type: Optional[str] = Query(None),
+    lead_type: Optional[str] = Query(None),
+    difficulty: Optional[str] = Query(None),
+    company: Optional[str] = Query(None),
+    industry: Optional[str] = Query(None),
+) -> Any:
+    """
+    Retrieve templates with user's progress data
+    
+    Returns a list of interview templates enriched with the user's progress
+    if they have started or completed any interviews for each template.
+    """
+    # Check if user is not admin, then verify subscription
+    if not current_user.is_admin:
+        get_subscription_active(current_user=current_user, db=db)
+    
+    # Get templates with filtering
+    filters = {}
+    if case_type:
+        filters["case_type"] = case_type
+    if lead_type:
+        filters["lead_type"] = lead_type
+    if difficulty:
+        filters["difficulty"] = difficulty
+    if company:
+        filters["company"] = company
+    if industry:
+        filters["industry"] = industry
+    
+    templates = template_service.get_templates(
+        db=db, skip=skip, limit=limit, filters=filters
+    )
+    
+    # Get all interviews for the current user
+    interviews = interview_service.get_interviews_by_user_id(
+        db=db, user_id=current_user.id
+    )
+    
+    # Create a lookup dictionary of interviews by template_id
+    # If multiple interviews exist for a template, use the most recent one
+    interview_lookup = {}
+    for interview in interviews:
+        template_id = str(interview.template_id)
+        # Only add to lookup if this is the first time seeing this template_id
+        # or if this interview is more recent than the one already in the lookup
+        if (template_id not in interview_lookup or
+            interview.started_at > interview_lookup[template_id].started_at):
+            interview_lookup[template_id] = interview
+    
+    # Enrich templates with interview progress data
+    result = []
+    for template in templates:
+        template_dict = template.__dict__
+        template_id = str(template.id)
+        
+        # Add progress data if this template has an interview
+        if template_id in interview_lookup:
+            interview = interview_lookup[template_id]
+            progress_data = interview.progress_data or {}
+            questions_completed = len(progress_data.get("questions_completed", [])) if progress_data else 0
+            
+            template_dict.update({
+                "progress_status": interview.status,
+                "progress_data": progress_data,
+                "interview_id": interview.id,
+                "started_at": interview.started_at,
+                "completed_at": interview.completed_at,
+                "questions_completed": questions_completed,
+                "total_questions": 4,  # Hardcoded as templates have 4 questions per the schema
+            })
+        else:
+            # No interview found for this template
+            template_dict.update({
+                "progress_status": None,
+                "progress_data": None,
+                "interview_id": None,
+                "started_at": None,
+                "completed_at": None,
+                "questions_completed": 0,
+                "total_questions": 4,
+            })
+        
+        # Use InterviewTemplateWithProgress schema
+        result.append(template_dict)
+    
+    return result
 
 @router.get("/{template_id}", response_model=InterviewTemplate)
 def read_template(

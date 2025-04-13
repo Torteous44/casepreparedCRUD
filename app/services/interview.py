@@ -68,4 +68,16 @@ def delete_interview(db: Session, interview_id: UUID) -> bool:
         db.delete(interview)
         db.commit()
         return True
-    return False 
+    return False
+
+def get_in_progress_interview_by_template(
+    db: Session, user_id: UUID, template_id: UUID
+) -> Optional[Interview]:
+    """
+    Get the most recent in-progress interview for a specific user and template
+    """
+    return db.query(Interview).filter(
+        Interview.user_id == user_id,
+        Interview.template_id == template_id,
+        Interview.status == "in-progress"
+    ).order_by(Interview.started_at.desc()).first() 
