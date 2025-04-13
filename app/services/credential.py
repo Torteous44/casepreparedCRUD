@@ -108,7 +108,7 @@ def generate_turn_credentials(username: str, ttl: int = 86400) -> Dict[str, Any]
         logger.info(f"Twilio API response status: {response.status_code}")
         
         # Check if request was successful
-        if response.status_code != 200:
+        if response.status_code not in [200, 201]:
             error_msg = f"Failed to get Twilio token: Status code {response.status_code}, Response: {response.text}"
             logger.error(error_msg)
             raise Exception(error_msg)

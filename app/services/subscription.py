@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Union
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -17,6 +17,24 @@ def get_subscription_by_stripe_id(db: Session, stripe_subscription_id: str) -> O
 
 def get_subscriptions(db: Session, skip: int = 0, limit: int = 100) -> List[Subscription]:
     return db.query(Subscription).offset(skip).limit(limit).all()
+
+def has_active_subscription(db: Session, user_id: Union[UUID, str]) -> bool:
+    """
+    Check if a user has an active subscription
+    
+    Args:
+        db: Database session
+        user_id: User ID
+        
+    Returns:
+        True if the user has an active subscription, False otherwise
+    """
+    subscription = db.query(Subscription).filter(
+        Subscription.user_id == user_id,
+        Subscription.status.in_(["active", "trial"])
+    ).first()
+    
+    return subscription is not None
 
 def create_subscription(db: Session, subscription_in: SubscriptionCreate) -> Subscription:
     db_subscription = Subscription(

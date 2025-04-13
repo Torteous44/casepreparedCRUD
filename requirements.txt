@@ -14,3 +14,4 @@ python-dotenv>=1.0.0
 cloudinary>=1.33.0
 requests>=2.32.0
 twilio>=8.4.0  
+cloudinary>=1.33.0
