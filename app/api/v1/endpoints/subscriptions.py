@@ -1,4 +1,5 @@
 from typing import Any, List
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -25,7 +26,32 @@ def read_subscriptions(
     """
     subscriptions = subscription_service.get_subscriptions(db=db, skip=skip, limit=limit)
     # Filter to only show subscriptions that belong to the current user
-    return [sub for sub in subscriptions if sub.user_id == current_user.id]
+    user_subscriptions = [sub for sub in subscriptions if sub.user_id == current_user.id]
+    
+    # Enhance subscriptions with next payment date
+    for sub in user_subscriptions:
+        if sub.stripe_subscription_id and sub.status == "active":
+            try:
+                # Try to get subscription details from Stripe
+                stripe_sub = stripe_service.retrieve_subscription(sub.stripe_subscription_id)
+                
+                # Get the next billing date
+                if stripe_sub and "current_period_end" in stripe_sub:
+                    # Convert UNIX timestamp to datetime
+                    next_payment_timestamp = stripe_sub["current_period_end"]
+                    sub.next_payment_date = datetime.fromtimestamp(next_payment_timestamp)
+                else:
+                    # Fallback: estimate based on creation date if unavailable
+                    # This assumes monthly billing - adjust as needed
+                    sub.next_payment_date = sub.created_at + timedelta(days=30)
+            except Exception as e:
+                # If Stripe API call fails, use an estimate
+                sub.next_payment_date = sub.created_at + timedelta(days=30)
+        else:
+            # For non-active subscriptions, don't set a next payment date
+            sub.next_payment_date = None
+    
+    return user_subscriptions
 
 @router.post("/", response_model=Subscription)
 def create_subscription(

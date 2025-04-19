@@ -160,4 +160,20 @@ def retrieve_payment_intent(payment_intent_id: str) -> Dict[str, Any]:
         payment_intent = stripe.PaymentIntent.retrieve(payment_intent_id)
         return payment_intent
     except stripe.error.StripeError as e:
+        raise e
+
+def retrieve_subscription(subscription_id: str) -> Dict[str, Any]:
+    """
+    Retrieve a Stripe subscription by ID
+    
+    Args:
+        subscription_id: Stripe subscription ID
+        
+    Returns:
+        Dictionary containing subscription details
+    """
+    try:
+        subscription = stripe.Subscription.retrieve(subscription_id)
+        return subscription
+    except stripe.error.StripeError as e:
         raise e 

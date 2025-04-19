@@ -34,7 +34,7 @@ class SubscriptionInDBBase(SubscriptionBase):
 
 # Properties to return to client
 class Subscription(SubscriptionInDBBase):
-    pass
+    next_payment_date: Optional[datetime] = None
 
 # Properties stored in DB
 class SubscriptionInDB(SubscriptionInDBBase):
