@@ -363,8 +363,13 @@ def complete_question(
     if not current_user.is_admin and interview.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Not authorized to update this interview")
     
-    # Check if interview is in progress
-    if interview.status != "in-progress":
+    # Check if interview is in progress or if it's the last question that needs completion
+    # This allows completing the 4th question even if the interview status changed
+    valid_status = interview.status == "in-progress"
+    is_last_question = question_number == 4
+    final_question_completion = is_last_question and interview.status == "completed"
+    
+    if not (valid_status or final_question_completion):
         raise HTTPException(status_code=400, detail="Interview is not in progress")
     
     # Get progress data (initialize if not existing)
@@ -373,7 +378,7 @@ def complete_question(
     questions_completed = progress_data.get("questions_completed", [])
     
     # Validate the question number
-    if question_number != current_question:
+    if question_number != current_question and not final_question_completion:
         raise HTTPException(status_code=400, detail="Can only complete the current question")
     
     # Mark current question as complete
@@ -393,6 +398,12 @@ def complete_question(
     interview_update = InterviewUpdate(progress_data=new_progress_data)
     if len(questions_completed) >= 4 and all(q in questions_completed for q in range(1, 5)):
         interview_update.status = "completed"
+    
+    # If the interview is already completed but we're marking the 4th question,
+    # just update the progress_data without changing status
+    if final_question_completion:
+        # Don't update the status if already completed
+        interview_update = InterviewUpdate(progress_data=new_progress_data)
     
     # Update the interview
     updated_interview = interview_service.update_interview(
