@@ -411,12 +411,23 @@ async def create_checkout_session(
         if cancel_url:
             checkout_args["cancel_url"] = cancel_url
             
-        checkout_session = stripe_service.create_checkout_session(**checkout_args)
-        
-        return {
-            "session_id": checkout_session.id,
-            "checkout_url": checkout_session.url
-        }
+        try:
+            print(f"Creating checkout session with args: {checkout_args}")
+            checkout_session = stripe_service.create_checkout_session(**checkout_args)
+            print(f"Checkout session created successfully: {checkout_session.id}")
+            return {
+                "session_id": checkout_session.id,
+                "checkout_url": checkout_session.url
+            }
+        except Exception as e:
+            import traceback
+            print(f"DETAILED CHECKOUT ERROR: {str(e)}")
+            print(f"Error type: {type(e)}")
+            print(f"Traceback: {traceback.format_exc()}")
+            raise HTTPException(
+                status_code=400,
+                detail=f"Error creating checkout session: {str(e)}"
+            )
         
     except Exception as e:
         raise HTTPException(

@@ -244,9 +244,22 @@ def create_checkout_session(
         if customer_id:
             checkout_params["customer"] = customer_id
             
+        print(f"Stripe API key: {stripe.api_key[:8]}... (live mode: {not stripe.api_key.startswith('sk_test_')})")
+        print(f"Creating checkout session with params: {checkout_params}")
+        
+        # Validate price exists in Stripe
+        try:
+            price = stripe.Price.retrieve(price_id)
+            print(f"Price found: {price.id}, product: {price.product}")
+        except Exception as price_error:
+            print(f"Price validation error: {str(price_error)}")
+            raise price_error
+            
         checkout_session = stripe.checkout.Session.create(**checkout_params)
         return checkout_session
     except stripe.error.StripeError as e:
+        print(f"Stripe error: {type(e)}, {str(e)}")
+        print(f"Error details: {e.json_body if hasattr(e, 'json_body') else 'No JSON body'}")
         raise e
 
 def retrieve_checkout_session(session_id: str) -> Dict[str, Any]:
