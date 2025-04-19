@@ -15,6 +15,9 @@ def get_subscription_by_user_id(db: Session, user_id: UUID) -> Optional[Subscrip
 def get_subscription_by_stripe_id(db: Session, stripe_subscription_id: str) -> Optional[Subscription]:
     return db.query(Subscription).filter(Subscription.stripe_subscription_id == stripe_subscription_id).first()
 
+def get_subscription_by_stripe_customer_id(db: Session, stripe_customer_id: str) -> Optional[Subscription]:
+    return db.query(Subscription).filter(Subscription.stripe_customer_id == stripe_customer_id).first()
+
 def get_subscriptions(db: Session, skip: int = 0, limit: int = 100) -> List[Subscription]:
     return db.query(Subscription).offset(skip).limit(limit).all()
 

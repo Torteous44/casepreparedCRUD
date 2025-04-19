@@ -106,6 +106,41 @@ def handle_webhook_event(payload: Dict[str, Any], sig_header: str, db: Session) 
                 db.commit()
                 db.refresh(db_subscription)
         
+        # Handle checkout session completed events
+        elif event_type == "checkout.session.completed":
+            # Get details from the checkout session
+            session = event_data
+            
+            # If this is for a subscription
+            if session.get("mode") == "subscription" and session.get("customer") and session.get("subscription"):
+                customer_id = session.get("customer")
+                subscription_id = session.get("subscription")
+                
+                # Try to find user with this customer ID
+                db_subscription = subscription_service.get_subscription_by_stripe_customer_id(
+                    db, customer_id
+                )
+                
+                if db_subscription:
+                    # Update subscription with the new subscription ID
+                    db_subscription.stripe_subscription_id = subscription_id
+                    db_subscription.status = "active"
+                    
+                    # Try to get subscription details to update plan info
+                    try:
+                        subscription = retrieve_subscription(subscription_id)
+                        if subscription and subscription.get("items") and subscription["items"].get("data") and len(subscription["items"]["data"]) > 0:
+                            price_id = subscription["items"]["data"][0].get("price", {}).get("id")
+                            if price_id:
+                                db_subscription.plan = price_id
+                    except Exception:
+                        # Continue even if we can't get the price ID
+                        pass
+                    
+                    db.add(db_subscription)
+                    db.commit()
+                    db.refresh(db_subscription)
+        
         return {"success": True, "event_type": event_type}
     
     except (stripe.error.SignatureVerificationError, ValueError) as e:
@@ -175,5 +210,60 @@ def retrieve_subscription(subscription_id: str) -> Dict[str, Any]:
     try:
         subscription = stripe.Subscription.retrieve(subscription_id)
         return subscription
+    except stripe.error.StripeError as e:
+        raise e
+
+def create_checkout_session(
+    price_id: str,
+    customer_id: Optional[str] = None,
+    success_url: str = f"{settings.FRONTEND_BASE_URL}/checkout/success",
+    cancel_url: str = f"{settings.FRONTEND_BASE_URL}/checkout/cancel",
+) -> Dict[str, Any]:
+    """
+    Create a Stripe Checkout session for subscription
+    
+    Args:
+        price_id: Stripe Price ID for the subscription plan
+        customer_id: Optional existing Stripe customer ID
+        success_url: URL to redirect after successful payment
+        cancel_url: URL to redirect after cancelled payment
+        
+    Returns:
+        Dictionary containing checkout session details with URL
+    """
+    try:
+        checkout_params = {
+            "payment_method_types": ["card"],
+            "line_items": [{"price": price_id, "quantity": 1}],
+            "mode": "subscription",
+            "success_url": success_url,
+            "cancel_url": cancel_url,
+        }
+        
+        # Add customer if provided
+        if customer_id:
+            checkout_params["customer"] = customer_id
+            
+        checkout_session = stripe.checkout.Session.create(**checkout_params)
+        return checkout_session
+    except stripe.error.StripeError as e:
+        raise e
+
+def retrieve_checkout_session(session_id: str) -> Dict[str, Any]:
+    """
+    Retrieve a Stripe Checkout session by ID
+    
+    Args:
+        session_id: Stripe Checkout session ID
+        
+    Returns:
+        Dictionary containing checkout session details
+    """
+    try:
+        session = stripe.checkout.Session.retrieve(
+            session_id,
+            expand=["subscription", "customer"]
+        )
+        return session
     except stripe.error.StripeError as e:
         raise e 

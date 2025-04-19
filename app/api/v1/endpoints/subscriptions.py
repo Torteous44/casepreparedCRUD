@@ -340,4 +340,210 @@ async def cancel_subscription(
         raise HTTPException(
             status_code=400,
             detail=f"Error cancelling subscription: {str(e)}"
+        )
+
+@router.post("/create-checkout-session")
+async def create_checkout_session(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    data: dict = Body(...),
+) -> Any:
+    """
+    Create a Stripe Checkout session for subscription purchase
+    """
+    # Extract price_id from the request body
+    price_id = data.get("price_id")
+    success_url = data.get("success_url")
+    cancel_url = data.get("cancel_url")
+    
+    if not price_id:
+        raise HTTPException(
+            status_code=422,
+            detail="price_id is required"
+        )
+        
+    # Check if user already has a subscription
+    existing_sub = subscription_service.get_subscription_by_user_id(
+        db=db, user_id=current_user.id
+    )
+    
+    try:
+        # Create or get existing Stripe customer
+        customer_id = None
+        if existing_sub and existing_sub.stripe_customer_id:
+            customer_id = existing_sub.stripe_customer_id
+        else:
+            # Create a new customer in Stripe
+            try:
+                customer = stripe_service.create_customer(
+                    email=current_user.email,
+                    name=current_user.full_name,
+                )
+                customer_id = customer["id"]
+                
+                # If we created a new customer, store the relationship
+                if not existing_sub:
+                    sub_create = SubscriptionCreate(
+                        user_id=current_user.id,
+                        stripe_customer_id=customer_id,
+                        plan="pending",
+                        status="incomplete",
+                    )
+                    subscription_service.create_subscription(
+                        db=db, subscription_in=sub_create
+                    )
+            except Exception as customer_error:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Error creating Stripe customer: {str(customer_error)}"
+                )
+        
+        # Create the checkout session
+        checkout_args = {
+            "price_id": price_id,
+            "customer_id": customer_id,
+        }
+        
+        # Add optional parameters if provided
+        if success_url:
+            checkout_args["success_url"] = success_url
+        if cancel_url:
+            checkout_args["cancel_url"] = cancel_url
+            
+        checkout_session = stripe_service.create_checkout_session(**checkout_args)
+        
+        return {
+            "session_id": checkout_session.id,
+            "checkout_url": checkout_session.url
+        }
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error creating checkout session: {str(e)}"
+        )
+
+@router.get("/verify-session")
+async def verify_session(
+    *,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+    session_id: str,
+) -> Any:
+    """
+    Verify a Stripe Checkout session status and update subscription if needed
+    """
+    try:
+        # Retrieve the session from Stripe
+        session = stripe_service.retrieve_checkout_session(session_id)
+        
+        # If the payment was successful
+        if session.get("status") == "complete":
+            # Check if the session has subscription and customer data
+            subscription_id = session.get("subscription")
+            customer_id = session.get("customer")
+            
+            # Extract string IDs from objects if needed
+            if subscription_id and hasattr(subscription_id, "id"):
+                subscription_id = subscription_id.id
+            
+            if customer_id and hasattr(customer_id, "id"):
+                customer_id = customer_id.id
+            
+            if subscription_id and customer_id:
+                # Find the subscription in our database
+                db_subscription = subscription_service.get_subscription_by_user_id(
+                    db, current_user.id
+                )
+                
+                if db_subscription:
+                    # Update the subscription with the Stripe data if needed
+                    update_needed = False
+                    update_data = {}
+                    
+                    # Update Stripe subscription ID if not set or different
+                    if not db_subscription.stripe_subscription_id or db_subscription.stripe_subscription_id != subscription_id:
+                        update_data["stripe_subscription_id"] = subscription_id
+                        update_needed = True
+                    
+                    # Update customer ID if not set or different
+                    if not db_subscription.stripe_customer_id or db_subscription.stripe_customer_id != customer_id:
+                        update_data["stripe_customer_id"] = customer_id
+                        update_needed = True
+                    
+                    # Update status to active if not already
+                    if db_subscription.status != "active":
+                        update_data["status"] = "active"
+                        update_needed = True
+                        
+                    # Update the subscription in database if needed
+                    if update_needed:
+                        sub_update = SubscriptionUpdate(**update_data)
+                        subscription_service.update_subscription(
+                            db=db, db_subscription=db_subscription, subscription_in=sub_update
+                        )
+                        # Refresh the subscription data
+                        db_subscription = subscription_service.get_subscription_by_id(
+                            db, db_subscription.id
+                        )
+                    
+                    # Return the updated subscription details
+                    return {
+                        "session_id": session_id,
+                        "status": session.get("status"),
+                        "subscription_id": db_subscription.id,
+                        "subscription_status": db_subscription.status,
+                        "is_active": db_subscription.status == "active",
+                        "plan": db_subscription.plan
+                    }
+                else:
+                    # This should rarely happen - customer paid but we have no record
+                    # Create a new subscription record
+                    try:
+                        # Get Stripe subscription data to find the price/plan
+                        stripe_sub = stripe_service.retrieve_subscription(subscription_id)
+                        plan = None
+                        if stripe_sub and stripe_sub.get("items") and stripe_sub["items"].get("data") and len(stripe_sub["items"]["data"]) > 0:
+                            plan = stripe_sub["items"]["data"][0].get("price", {}).get("id")
+                        
+                        # Create the subscription in our database
+                        sub_create = SubscriptionCreate(
+                            user_id=current_user.id,
+                            stripe_customer_id=customer_id,
+                            stripe_subscription_id=subscription_id,
+                            plan=plan or "price_unknown",
+                            status="active",
+                        )
+                        new_sub = subscription_service.create_subscription(
+                            db=db, subscription_in=sub_create
+                        )
+                        
+                        return {
+                            "session_id": session_id,
+                            "status": session.get("status"),
+                            "subscription_id": new_sub.id,
+                            "subscription_status": new_sub.status,
+                            "is_active": new_sub.status == "active",
+                            "plan": new_sub.plan
+                        }
+                    except Exception as e:
+                        # If we can't create the subscription, at least inform the user it was successful
+                        return {
+                            "session_id": session_id,
+                            "status": session.get("status"),
+                            "error": f"Payment successful but error syncing subscription: {str(e)}",
+                            "is_active": False,
+                        }
+        
+        # If the session isn't complete
+        return {
+            "session_id": session_id,
+            "status": session.get("status", "unknown"),
+            "is_active": False,
+        }
+    except Exception as e:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Error verifying session: {str(e)}"
         ) 
