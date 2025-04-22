@@ -126,8 +126,8 @@ Potential reasons:
         "company": "TechNow",
         "industry": "Technology",
         "title": "TechNow Profitability Challenge",
-        "description_short": "Help TechNow identify why their profits have declined by 30% over the past year.",
-        "description_long": "TechNow is a leading technology retailer that has seen a 30% decline in profitability over the past year despite stable revenues. The CEO has hired you to diagnose the causes of this decline and recommend solutions to restore profitability.",
+        "description_short": "Our client is a global consumer goods company. The company's products include a wide variety of personal care products (e.g., hair care, skin care, cosmetics). The client's CEO feels strongly that her company needs to develop a plan to reduce its environmental impact and do its part in the fight against climate change, and has engaged BCG to help her create a business case for setting a science-based target to reduce the company's impact and determine what initiatives to undertake to achieve that target.",
+        "description_long": "The CEO of a global company wants to reduce their environmental impact. Build the business case for setting a climate target and determine what initiatives to undertake to achieve it.",
         "image_url": "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
         "duration": 35,
         "questions": [
