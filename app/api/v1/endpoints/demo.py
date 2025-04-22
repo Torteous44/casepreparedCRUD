@@ -493,7 +493,7 @@ def get_demo_question_token(
         ephemeral_key = credential_service.generate_openai_ephemeral_key(
             instructions=instructions,
             ttl=ttl,
-            voice="ballad"  # Using a consistent voice for demos
+            voice="echo"  # Using a consistent voice for demos
         )
         
         # Add custom metadata
@@ -529,7 +529,7 @@ def get_demo_question_token(
                 "model": "gpt-4o-mini-realtime-preview",
                 "modalities": ["audio", "text"],
                 "instructions": instructions,
-                "voice": "ballad",
+                "voice": "echo",
                 "temperature": 0.8,
                 "input_audio_format": "pcm16",
                 "output_audio_format": "pcm16",
@@ -757,7 +757,7 @@ def get_direct_token(
             "model": "gpt-4o-mini-realtime-preview",
             "modalities": ["audio", "text"],
             "instructions": instructions,
-            "voice": "ballad",
+            "voice": "echo",
             "temperature": 0.8,
             "input_audio_format": "pcm16",
             "output_audio_format": "pcm16",
