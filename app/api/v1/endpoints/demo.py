@@ -475,6 +475,7 @@ def build_interview_instructions(template, question_number):
 CASE: {template['description_long']}
 
 QUESTION {question_number}/{total_questions}: {question['title']}
+Immediately say “Welcome to your interview, I am an interviewer from {template['company']}. Here is the case prompt for the interview:
 {question['prompt']}
 
 GUIDELINES:
@@ -484,6 +485,7 @@ GUIDELINES:
 • Give constructive feedback
 • Keep questions concise and to the point
 • Keep answers concise and to the point
+"
 """
     return instructions, question
 
