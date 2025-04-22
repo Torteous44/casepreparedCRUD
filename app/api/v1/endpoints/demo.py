@@ -484,8 +484,6 @@ GUIDELINES:
 • Give constructive feedback
 • Keep questions concise and to the point
 • Keep answers concise and to the point
-
-Start the interview immediately.
 """
     return instructions, question
 
