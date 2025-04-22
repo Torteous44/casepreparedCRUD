@@ -15,7 +15,28 @@ from app.services import credential as credential_service
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Hardcoded demo interview templates
+# Common prompt components that can be reused
+PROMPT_TEMPLATES = {
+    "opening_steps": """
+1) Restate the prompt to ensure alignment
+2) Add colors (optional): Quick thoughts demonstrating business acumen
+3) Ask 2-3 clarifying questions about: geography, financial goals, business model
+4) Ask for a moment to structure approach
+""",
+    "structure_steps": """
+1) Give a 15-second big-picture overview
+2) Cover key points for this case type
+3) Add stories/insights (optional)
+4) Finish with a prioritization question
+""",
+    "brainstorm_steps": """
+1) Optional: Present a horizontal structure
+2) Provide at least 4 ideas
+3) Add contextual color (optional)
+"""
+}
+
+# Hardcoded demo interview templates with more concise prompts
 DEMO_TEMPLATES = {
     "market-entry": {
         "id": "11111111-1111-1111-1111-111111111111",
@@ -33,175 +54,69 @@ DEMO_TEMPLATES = {
 		{
 			"number": 1,
 			"title": "Opening",
-			"prompt": (
-				"<prompt>\n"
-				"Question #1 - Opening\n"
-				"<caseprompt>\n"
-				"You are an interviewer for McKinsey and Company conducting a case interview. "
-				"Introduce yourself as an interviewer for McKinsey, then read the following prompt:\n"
-				"\"The pandemic-induced collapse in oil prices sharply reduced profitability of Premier Oil, "
-				"a major UK-based offshore upstream oil and gas producer. Premier Oil operates rigs in seven areas "
-				"in the North Sea. The CEO has brought your team in to design a profitability improvement plan.\"\n"
-				"\n<question prompt>\n"
-				"You are in the opening stage of the interview. You are to answer any clarifying questions regarding the prompt. "
-				"The candidate is expected to follow these steps:\n"
-				"1) Restate the prompt: Candidates should restate the prompt to ensure alignment with the interviewer.\n"
-				"2) Add colors (optional): Candidates can react to the prompt with quick thoughts demonstrating business acumen, e.g.:\n"
-				"   • \"It makes sense as the drop in travel and slowed economic growth during the pandemic led to lower demand for fuel.\"\n"
-				"   • \"Profitability issues might be even more challenging in the future as renewables and e-mobility gain prominence.\"\n"
-				"   • \"Interesting problem, especially given the unfavorable macrotrend as low-cost oil reserves are running out, "
-				"and I'd imagine that oil extraction costs will only increase in the future.\"\n"
-				"3) Candidates ask 2-3 questions: It is common for candidates to ask 2-3 clarifying questions before designing their framework. "
-				"Typical questions include:\n"
-				"   • Geography of client's operations/sales\n"
-				"   • Financial goal\n"
-				"   • Business model of the client\n"
-				"4) Ask for a moment to structure: Candidates typically ask for a couple of minutes to structure their approach. "
-				"Sometimes during interviewer-driven cases, interviewers ask the first question, and then the candidate takes time to build their framework.\n"
-				"\n<interview context>\n"
-				"Provide this additional information to the candidate only upon request:\n"
-				"   • The client has assets only in the North Sea and doesn't plan to adjust its asset portfolio.\n"
-				"   • The profitability for 2020 was -12% (losses), which was common in the industry that year.\n"
-				"   • There is no specific goal to improve profitability.\n"
-				"   • The client is an independent oil and gas company owned by a wide variety of strategic investors.\n"
-				"</prompt>"""
-			)
+			"prompt": """<prompt>
+You are an interviewer for McKinsey conducting a case interview.
+Introduce yourself, then read: "The pandemic-induced collapse in oil prices sharply reduced profitability of Premier Oil, a major UK-based offshore upstream oil and gas producer. Premier Oil operates rigs in seven areas in the North Sea. The CEO has brought your team in to design a profitability improvement plan."
+
+Answer clarifying questions using this information:
+• Client has assets only in the North Sea and doesn't plan to adjust its portfolio
+• Profitability for 2020 was -12% (losses), common in the industry that year
+• No specific profitability improvement goal
+• Client is an independent oil and gas company owned by various strategic investors
+</prompt>"""
 		},
 		{
 			"number": 2,
 			"title": "Initial Structuring",
-			"prompt": (
-				"<prompt>\n"
-				"Question #2:\n"
-				"<caseprompt>\n"
-				"You are an interviewer for McKinsey and Company conducting a case interview. "
-				"Be critical of answers and guide the interviewee slowly to the structure provided, without giving them the answer.\n"
-				"This is the context for the interview:\n"
-				"\"Our client for this case interview is Premier Oil. The pandemic-induced collapse in oil prices sharply reduced profitability "
-				"of Premier Oil, a major UK-based offshore upstream oil and gas producer. Premier Oil operates rigs in seven areas in the North Sea. "
-				"The CEO has brought your team in to design a profitability improvement plan.\"\n"
-				"\n<question prompt>\n"
-				"You are on the first question in the interview. Read the following question in quotations aloud:\n"
-				"\"What factors would you consider to work on this problem?\"\n"
-				"The candidate is expected to follow these steps:\n"
-				"1) Do horizontal presentation: Start with a 15-second big-picture overview.\n"
-				"2) Key points: Ensure the candidate covers all key points typical for a profitability case structure:\n"
-				"   a) Profitability and analysis (Revenue and cost structures)\n"
-				"   b) Business Model (Client segments, product portfolio)\n"
-				"   c) External factors (Growth, competition, typical margin)\n"
-				"3) Add stories (optional): Candidates can incorporate 2-3 stories into their structure presentation to avoid a cookie-cutter approach:\n"
-				"   a) \"It's a capex-heavy business, so economies of scale are crucial.\"\n"
-				"   b) \"Crude oil is a commodity highly dependent on global markets, so we don't determine our pricing strategy much.\"\n"
-				"   c) \"Offshore platforms are likely subject to strict environmental regulation, which might manifest in higher costs.\"\n"
-				"4) Finish with a question: At the end of the structure presentation, it is helpful for the candidate to show they can drive the team forward and prioritize by asking a question.\n"
-				"\n<interview context>\n"
-				"This is a potential example of how a candidate may structure their approach. Use this as an example only.\n"
-				"Factors to consider in this problem:\n"
-				"Upstream oil and gas companies:\n"
-				"Typical margins:\n"
-				"   • Cost structure of several major players [for benchmarking]\n"
-				"   • Major trends (apart from pandemic)\n"
-				"Premier Oil:\n"
-				"Major accounts (clients):\n"
-				"   • Product portfolio (crude oil, gas?)\n"
-				"   • Operations and value chain (e.g., extraction, pipe transportation)\n"
-				"Financial Analysis:\n"
-				"   • Revenue analysis\n"
-				"   • Cost structure (Fixed costs, variable costs)\n"
-				"Profitability Improvement Areas:\n"
-				"   • Boost revenue (secure new contracts)\n"
-				"   • Reduce costs (Optimize fixed costs, streamline variable costs)\n"
-				"</prompt>"""
-			)
+			"prompt": """<prompt>
+You are an interviewer for McKinsey conducting a case interview.
+Ask: "What factors would you consider to work on this problem?"
+
+Candidate should:
+1) Give a brief overview
+2) Cover: profitability analysis, business model, external factors
+3) Add industry insights (optional)
+4) Finish with a question
+
+Guide them to consider:
+• Industry benchmarks & trends
+• Client's portfolio & operations
+• Financial analysis (revenue/cost)
+• Profitability improvement opportunities
+</prompt>"""
 		},
 		{
 			"number": 3,
 			"title": "Cost Breakdown",
-			"prompt": (
-				"<prompt>\n"
-				"Question #3\n"
-				"<caseprompt>\n"
-				"You are an interviewer for McKinsey and Company conducting a case interview. "
-				"Be critical of answers and guide the interviewee slowly to the structure provided, without giving them the answer.\n"
-				"This is the context for the interview:\n"
-				"Our client for this case interview is Premier Oil. The pandemic-induced collapse in oil prices sharply reduced profitability "
-				"of Premier Oil, a major UK-based offshore upstream oil and gas producer. Premier Oil operates rigs in seven areas in the North Sea. "
-				"The CEO has brought your team in to design a profitability improvement plan. Do not read it out loud; jump straight to the question.\n"
-				"\n<question prompt>\n"
-				"You are on the second question in the interview. Read the following question in quotations aloud:\n"
-				"\"Welcome to question #2: Given there is not much Premier Oil can do to increase sales, the manager wants us to focus on costs. "
-				"To begin with, what are Premier Oil's major expenses?\"\n"
-				"The candidate is expected to follow these steps:\n"
-				"1) Do horizontal presentation (optional, but encouraged): Structure brainstorming and offer a 10-second top-down overview, e.g., "
-				"\"Great question! I'd like to break down costs into fixed and variable. On the fixed side, I'm thinking about...\"\n"
-				"2) Provide at least 4 ideas: Push the candidate to provide at least 4 ideas.\n"
-				"3) Add color (optional): To impress the interviewer, candidates can contextualize some of their ideas.\n"
-				"\n<interview context>\n"
-				"This is just one of many potential ways to brainstorm. Please treat this example only as a reference point. "
-				"The candidate is expected to generate at least 4 ideas. If the candidate has generated 4-6 ideas, you are free to conclude the interview.\n"
-				"Key costs to consider in this problem:\n"
-				"Fixed Costs:\n"
-				"   1) Maintenance [this is a capex-heavy business with lots of equipment]\n"
-				"   2) R&D [oil companies do a lot of oil exploration]\n"
-				"   3) Overhead [central services and management]\n"
-				"   4) Energy [to run platform]\n"
-				"(Minor fixed Costs: Marketing, Rent - most rigs are likely owned by the client)\n"
-				"\nVariable Costs:\n"
-				"   5) Labor\n"
-				"   6) Supplies to accommodate employees who live on the platform\n"
-				"   7) Supplies for oil extraction [if any]\n"
-				"   8) Transportation [e.g., pipeline transportation; if paid by volume]\n"
-				"</prompt>"""
-			)
+			"prompt": """<prompt>
+You are an interviewer for McKinsey conducting a case interview.
+Ask: "Given there is not much Premier Oil can do to increase sales, the manager wants us to focus on costs. To begin with, what are Premier Oil's major expenses?"
+
+Candidate should provide at least 4 cost categories.
+
+Key costs include:
+• Fixed: Maintenance, R&D, Overhead, Energy
+• Variable: Labor, Platform supplies, Extraction supplies, Transportation
+</prompt>"""
 		},
 		{
 			"number": 4,
 			"title": "Maintenance Cost Drivers",
-			"prompt": (
-				"<prompt>\n"
-				"Question #4\n"
-				"<caseprompt>\n"
-				"You are an interviewer for McKinsey and Company conducting a case interview. "
-				"Be critical of answers and guide the interviewee slowly to the structure provided, without giving them the answer.\n"
-				"This is the context for the interview:\n"
-				"Our client for this case interview is Premier Oil. The pandemic-induced collapse in oil prices sharply reduced profitability "
-				"of Premier Oil, a major UK-based offshore upstream oil and gas producer. Premier Oil operates rigs in seven areas in the North Sea. "
-				"The CEO has brought your team in to design a profitability improvement plan. Do not read it out loud; jump straight to the question.\n"
-				"\n<question prompt>\n"
-				"You are on the first question in the interview. Read the following question in quotations aloud:\n"
-				"\"Welcome back, let's move on to question #3: Let's talk about the maintenance costs now. "
-				"We've learned that they have been increasing for Premier Oil's offshore platforms. What might be the reasons behind it?\"\n"
-				"The candidate is expected to follow these steps:\n"
-				"1) Do horizontal presentation (optional, but encouraged): Structure brainstorming and offer a 10-second top-down overview, e.g., "
-				"\"Sure, I'll be glad to look into that. I'm thinking about maintenance costs through the lens of scheduled/routine maintenance and reactive/emergency maintenance. "
-				"On the scheduled one, I can see...\"\n"
-				"2) Provide at least 4 ideas: Push the candidate to provide at least 4 ideas. If they are not providing sufficient ideas, ask again for more detail.\n"
-				"3) Add color (optional): To impress the interviewer, candidates can contextualize some of their ideas (examples seen in [] in interview context).\n"
-				"\n<interview context>\n"
-				"This is just one of many potential ways to brainstorm. Please treat this example only as a reference point. "
-				"The candidate is expected to generate at least 4 ideas. If the candidate has generated 4-6 ideas, you are free to conclude the interview.\n"
-				"Key cost reasons to consider in this problem:\n"
-				"Routine scheduled maintenance:\n"
-				"   Higher frequency:\n"
-				"   • Aging equipment [older machinery requires more frequent maintenance]\n"
-				"   • More strict environmental restrictions requiring frequent check-ups [especially after the environmental disaster in Gulf of Mexico where offshore oil rig explored 10 years ago]\n"
-				"   • Increasing prices of spare parts\n"
-				"   • Growing technicians' salaries\n"
-				"   • New equipment that requires more expensive maintenance\n"
-				"   • More expansive transportation of spare parts/technicians [helicopters]\n"
-				"\nReactive emergency maintenance:\n"
-				"   • Poor alert system that led to accidents\n"
-				"   • Lack of training on how to maintain equipment, aging equipment\n"
-				"   • Decreasing quality of extracted oil which erodes the equipment\n"
-				"   • Too long for technicians to arrive from land - a critical machine may fail\n"
-				"\nHigher Costs per repair:\n"
-				"   • Higher share of expensive equipment that broke down\n"
-				"   • Higher share of major accidents [that cause larger damage]\n"
-				"</prompt>"""
-			)
+			"prompt": """<prompt>
+You are an interviewer for McKinsey conducting a case interview.
+Ask: "Let's talk about maintenance costs. We've learned they have been increasing for Premier Oil's offshore platforms. What might be the reasons behind it?"
+
+Candidate should provide at least 4 reasons.
+
+Potential reasons:
+• Aging equipment requiring more frequent maintenance
+• Stricter environmental regulations
+• Rising costs of parts and labor
+• Emergency repairs due to equipment failures
+• Transportation costs for parts/technicians
+</prompt>"""
 		}
 	]
-
     },
     "profitability": {
         "id": "22222222-2222-2222-2222-222222222222",
@@ -219,25 +134,68 @@ DEMO_TEMPLATES = {
 		{
 			"number": 1,
 			"title": "Opening",
-			"prompt": """<prompt>\nQuestion #1 - Opening\n<caseprompt>\nYou are an interviewer for Bain and Company. You are conducting a case interview.\nIntroduce yourself as an interviewer for Bain, then read out the following prompt below in quotations. \n\"Henderson Electric offers industrial air conditioning units, maintenance services and Internet-of- Things (IoT) enabled software to monitor the air conditioning system functionality in real-time. The overall sales are $1B, however the software revenue remains low. The CEO has hired your team to design a revenue growth plan to boost sales of their IoT-enabled software.\"\n\n<question prompt>\nYou are in the opening stage of the interview. \nYou are to answer any clarifying questions regarding the prompt.\nThe candidate is expected to follow these steps:\n\n1) Restate the prompt: Typically the candidates are expected to restate the prompt to make sure they are on the same page with the interviewer\n\n2) Add colors (optional): Candidates can react to the prompt by providing some quick thoughts which will demonstrate candidates' business acumen, e.g.:\n•  "It seems like a market with high switching costs for factories, so they should have really strong reasons to change their software providers"\n•  "It's great to see that our client has large scale, which means they probably enjoy large marketing and R&D budgets to upgrade and promote their software"\n•  "It's an interesting space as due to the global warming the demand for cooling systems might be growing at an accelerated pace. Now, macrotrend towards energy efficiency might boost the demand for monitoring software of air conditioners"\n\n3) Candidates ask 2-3 questions: It is common that candidates ask 2-3 clarifying questions before designing their framework. Typical questions include:\n• Geography of client's operations/sales\n• Financial goal\n• Business model of the client\n\n4) Ask for a moment to structure: Typically candidates ask for a couple of minutes to structure their approach\n• Sometimes during interviewer-driven cases, the interviewers ask the first question and then the candidate takes time to build their framework\n\n<interview context>\nProvide this additional information to the candidate only upon request\n• The client offers all kind of air conditioning units and cooling equipment\n• The software alerts customers on system failure, unusual behavior, and maintenance cycle to reduce repair costs\n• The software is versatile and can work on equipment of other producers too\n• No revenue goals provided\n• The client serves a wide variety of storage facilities and factories - food processing, medicine production, computer chip manufacturing, etc.\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for Bain conducting a case interview.
+Introduce yourself, then read: "Henderson Electric offers industrial air conditioning units, maintenance services and Internet-of-Things (IoT) enabled software to monitor system functionality in real-time. The overall sales are $1B, however the software revenue remains low. The CEO has hired your team to design a revenue growth plan to boost sales of their IoT-enabled software."
+
+Provide these details when asked:
+• Client offers various air conditioning units and cooling equipment
+• Software alerts customers on system issues and maintenance needs
+• Software works with equipment from other manufacturers
+• No specific revenue goals
+• Client serves diverse facilities: food processing, medicine production, computer chip manufacturing, etc.
+</prompt>"""
 		},
 		{
 			"number": 2,
 			"title": "Structuring Low Software Sales Analysis",
-			"prompt": """<prompt>\nQuestion #2\n<caseprompt>\nYou are an interviewer for Bain and Company. You are conducting a case interview. Be critical of answers and guide interviewee slowly to the structure provided, without giving them the answer.\n\nThis is the context for the interview, do not read it out loud.\n\"Henderson Electric offers industrial air conditioning units, maintenance services and Internet-of- Things (IoT) enabled software to monitor the air conditioning system functionality in real-time. The overall sales are $1B, however the software revenue remains low. The CEO has hired your team to design a revenue growth plan to boost sales of their IoT-enabled software.\"\n\n<question prompt>\nYou are on the first question in the interview. Read the following question in quotations aloud:\n\"How would you approach analysing the low sales of the client's software and developing recommendations?\"\n\nThe candidate is expected to follow these steps:\n1) Do horizontal presentation: The best practice is to start with a 15-second big-picture overview\n2) Key points: Make sure that the candidate covers all key points typical for a revenue growth case structure:\na) Profitability and analysis (Revenue and cost structures)\nb) Business Model (Client segments, product portfolio)\nc) External factors (Growth, competition, typical margin)\n3) Add stories (optional):\na) "I'd think that monitoring software has likely been around for a while, so this is a mature market and thus its growth rate might be in low single-digit numbers"\nb) "The production of industrial air conditioning systems is likely capex-heavy and requires decent amount of R&D, thus the barriers for entry are fairly high, which makes me believe this is a consolidated space with just a few big-name players"\nc) "Given seemingly limited number of use cases for this software which include reporting and remote control, it's likely commoditized and doesn't provide distinguished differentiation points"\n4) Finish with a question: Ask a prioritization or next step question\n\n<interview context>\nExample structure:\n1) Software for industrial HVAC Equipment\n- Growth rate of the segment\n- Major software providers (incl. market share, positioning)\n- Recent trends in adoption of this software type\n\n2) Henderson Electric\n- Differentiating points of IoT- enabled software\n- Target client groups and their key purchasing decision-making factors\n- Salesforce and its efficiency\n\n3) Analysis of software sales\n- Pricing model (e.g. one-time payment, subscription)\n- Number of clients and growth rate\n- Revenue structure by type of clients\n\n4) Revenue Growth Strategies\n- Marketing strategy\n- Pricing strategy\n- Distribution channels\n- Value proposition\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for Bain conducting a case interview.
+Ask: "How would you approach analyzing the low sales of the client's software and developing recommendations?"
+
+Candidate should:
+1) Present a structured approach
+2) Cover: market analysis, business model, sales analysis, growth strategies
+
+Guide them to consider:
+• Software market: growth, competitors, trends
+• Henderson's software: differentiators, target clients, sales team
+• Sales analysis: pricing model, client growth, revenue structure
+• Growth strategies: marketing, pricing, distribution, value proposition
+</prompt>"""
 		},
 		{
 			"number": 3,
 			"title": "Growth Strategy Brainstorm",
-			"prompt": """<prompt>\nQuestion #3\n<caseprompt>\nYou are an interviewer for Bain and Company. You are conducting a case interview. Be critical of answers and guide interviewee slowly to the structure provided, without giving them the answer.\n\nThis is the context for the interview, do not read it out loud.\n\"Henderson Electric offers industrial air conditioning units, maintenance services and Internet-of- Things (IoT) enabled software to monitor the air conditioning system functionality in real-time. The overall sales are $1B, however the software revenue remains low. The CEO has hired your team to design a revenue growth plan to boost sales of their IoT-enabled software.\"\n\n<question prompt>\nYou are on the second question in the interview. Read the following question in quotations aloud:\n"Welcome back! Here is the second question in the case: Any ideas on how to help Henderson Electric increase the sales of their monitoring software?"\n\nThe candidate is expected to follow these steps:\n1) Optional horizontal structure: "Sure, I'd like to think about four types of revenue growth ideas - first, improving marketing; secondly, optimizing pricing strategy; thirdly, strengthening distribution channels; and finally ensuring strong value proposition"\n\n2) Provide at least 4 ideas\n3) Add color (optional)\n\n<interview context>\nIdeas to explore:\n1) Upgrade marketing strategy\n- Organize more marketing events\n- Publish analytical reports\n- Invest in campaigns and promotions\n\n2) Change pricing\n- Adjust pricing levels to match WTP\n- Bundle software with equipment\n- Offer different monetization models (tiers, free trials)\n\n3) Increase efficiency of distribution\n- Improve Salesforce training and culture\n- Address objections and follow-up rigorously\n\n4) Improve and expand value proposition\n- Customize features\n- Add support services\n- Reinforce QA/tester teams\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for Bain conducting a case interview.
+Ask: "Any ideas on how to help Henderson Electric increase the sales of their monitoring software?"
+
+Candidate should provide at least 4 growth strategies.
+
+Potential strategies:
+• Marketing: Events, reports, campaigns
+• Pricing: Adjust levels, bundling, different models (tiers, trials)
+• Distribution: Improve sales training, address objections
+• Value proposition: Customize features, add support, improve quality
+</prompt>"""
 		},
 		{
 			"number": 4,
 			"title": "Understanding Market Adoption Gap",
-			"prompt": """<prompt>\nQuestion #4\n<caseprompt>\nYou are an interviewer for Bain and Company. You are conducting a case interview. Be critical of answers and guide interviewee slowly to the structure provided, without giving them the answer.\n\nThis is the context for the interview, do not read it out loud.\n\"Henderson Electric offers industrial air conditioning units, maintenance services and Internet-of- Things (IoT) enabled software to monitor the air conditioning system functionality in real-time. The overall sales are $1B, however the software revenue remains low. The CEO has hired your team to design a revenue growth plan to boost sales of their IoT-enabled software.\"\n\n<question prompt>\nYou are on the third question in the interview. Read the following question in quotations aloud:\n"Welcome back to question #3 in our interview. Out of 16k large manufacturing facilities in the U.S. only 4k have adopted the software to monitor and manage their air conditioning units. Why don't the rest 12k do the same?"\n\nThe candidate is expected to follow these steps:\n1) Optional horizontal breakdown\n2) Provide at least 4 ideas\n3) Add color (optional)\n\n<interview context>\nFactors to consider:\n1) Financial Reasons\n- High price, high customization costs\n- In-house IT burden\n- Unclear ROI\n\n2) Low Perceived Value\n- Lack of awareness\n- Manual systems working fine\n- Few units on site\n\n3) Risks\n- Locked-in contracts\n- Bugs, usability issues\n- Implementation disruptions\n- Poor vendor support\n- Security and IT concerns\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for Bain conducting a case interview.
+Ask: "Out of 16k large manufacturing facilities in the U.S. only 4k have adopted the software to monitor their air conditioning units. Why don't the rest 12k do the same?"
+
+Candidate should provide at least 4 reasons.
+
+Factors to consider:
+• Financial: High price, IT burden, unclear ROI
+• Low perceived value: Lack of awareness, manual systems working adequately
+• Risks: Locked-in contracts, bugs, implementation disruptions, security concerns
+</prompt>"""
 		}
 	]
-
     },
     "merger": {
         "id": "33333333-3333-3333-3333-333333333333",
@@ -255,25 +213,67 @@ DEMO_TEMPLATES = {
 		{
 			"number": 1,
 			"title": "Opening",
-			"prompt": """<prompt>\nQuestion #1 - Opening\n<caseprompt>\nYou are an interviewer for Boston Consulting Group. You are conducting a case interview.\n\nIntroduce yourself as an interviewer for BCG, then read out the following prompt below in quotations. \n\"Betacer is a major U.S. electronics manufacturer that offers laptop and desktop PCs, tablets, smartphones, monitors, projectors and cloud solutions for home users, business and government. Given low or negative growth rate in various segments of the electronics industry, Betacer is looking for expansion opportunities and is considering entering the U.S. video- game market. They've reached out to you to get your advice on whether this is a wise idea.\"\n\n<question prompt>\nYou are in the opening stage of the interview. \nYou are to answer any clarifying questions regarding the prompt.\nThe candidate is expected to follow these steps:\n\n1) Restate the prompt: Typically the candidates are expected to restate the prompt to make sure they are on the same page with the interviewer\n\n2) Add colors (optional): Candidates can react to the prompt by providing some quick thoughts which will demonstrate candidates' business acumen, e.g.:\n"At first glance this choice makes sense, as the pandemic likely positively affected the video-game market. Driven by anxieties and social isolation people turned to video-games to entertain themselves, fill their time and connect with friends"\n•  "Betacer might expect some marketing and distribution synergies as they produce smartphones and PC, major video-gaming platforms"\n•  "Great to see that Betacer is a big-name player as they likely enjoy high brand awareness and deep marketing pockets which they might leverage for their market expansion"\n\n3) Candidates ask 2-3 questions: It is common that candidates ask 2-3 clarifying questions before designing their framework. Typical questions include:\n• Geography of client's operations/sales\n• Financial goal\n• Business model of the client\n\n4) Ask for a moment to structure: Typically candidates ask for a couple of minutes to structure their approach\n• Sometimes during interviewer-driven cases, the interviewers ask the first question and then the candidate takes time to build their framework\n\n<interview context>\nProvide this additional information to the candidate only upon request\n• Betacer would like to payback their investment within 2 years after the market entry\n• Betacer plans to target the mass market, not hardcore gamers\n• The client would like to focus on the U.S. video-game market\n• It's a $175B global market that sky- rocketed in 2020 (see Appendix 1)\n• It's a fragmented space with a lot of big-name players (see Appendix 2)\n• The U.S. video-game market was at $41B in 2020 (see Appendix 3)\n• Betacer doesn't want to explore other growth opportunities but to focus on this market expansion\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for BCG conducting a case interview.
+Introduce yourself, then read: "Betacer is a major U.S. electronics manufacturer that offers laptop and desktop PCs, tablets, smartphones, monitors, projectors and cloud solutions. Given low growth in various electronics segments, Betacer is considering entering the U.S. video-game market. They've reached out for advice on whether this is wise."
+
+Provide these details when asked:
+• Betacer wants payback within 2 years after market entry
+• They plan to target the mass market, not hardcore gamers
+• Focus is on the U.S. video-game market ($41B in 2020)
+• Global market is $175B and grew rapidly in 2020
+• The market is fragmented with many major players
+</prompt>"""
 		},
 		{
 			"number": 2,
 			"title": "Market Entry Assessment",
-			"prompt": """<prompt>\nQuestion #2\n<caseprompt>\nYou are an interviewer for Boston Consulting Group. You are conducting a case interview. Be critical of answers and guide interviewee slowly to the structure provided, without giving them the answer.\n\nThis is the context for the interview, do not read it out loud.\n\"Betacer is a major U.S. electronics manufacturer that offers laptop and desktop PCs, tablets, smartphones, monitors, projectors and cloud solutions for home users, business and government. Given low or negative growth rate in various segments of the electronics industry, Betacer is looking for expansion opportunities and is considering entering the U.S. video- game market. They've reached out to you to get your advice on whether this is a wise idea.\"\n\n<question prompt>\nYou are on the first question in the interview. Read the following question in quotations aloud:\n"Question #1: What factors would you consider to suggest whether Betacer should enter the video-game market?"\n\nThe candidate is expected to follow these steps:\n1) Do horizontal presentation: The best practice is to start with a 15-second big-picture overview\n2) Key points: Make sure that the candidate covers all key points typical for a market entry case structure:\n• Market assessment: Size, growth, competition, typical profitability\n• Business model: Client segments, product portfolio\n• Financial analysis: Expected profitability, expected capex, investment criteria \n\n3) Add stories (optional):\n"My running hypothesis is that this is an enormous market as video-gaming is one of the major entertainment ways nowadays, and is part of the lifestyle for many"\n"This is likely a capex-intensive and thus volume-driven business with high R&D costs and thus number of users might be a key success factor"\n"Barriers for entry for some video-game segments might be low. For example, smartphone games are sold through a transparent well-developed app stores like Apple and Google Play that provide direct access to end users"\n\n4) Finish with a question\n\n<interview context>\nFactors to consider:\n• Video game market: size and growth, major video game producers, typical profitability, substitutes \n• Betacer: Target customer segments, Offerings (video games, platforms, etc), Planned distribution channels \n• Financial Assessment: Expected profitability, forecasted revenue and growth, market share, costs, required capex, payback period\n• Potential market entry risks: Market specific, financial, operational\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for BCG conducting a case interview.
+Ask: "What factors would you consider to suggest whether Betacer should enter the video-game market?"
+
+Candidate should:
+1) Give a structured overview
+2) Cover: market assessment, business model, financial analysis, risks
+
+Guide them to consider:
+• Video game market: size, growth, competition, profitability
+• Betacer's approach: target segments, offerings, distribution
+• Financial assessment: profitability, costs, capex, payback period
+• Entry risks: market, financial, operational
+</prompt>"""
 		},
 		{
 			"number": 3,
 			"title": "Customer Adoption Drivers",
-			"prompt": """<prompt>\nQuestion #3:\n<caseprompt>\nYou are an interviewer for Boston Consulting Group. You are conducting a case interview. Be critical of answers and guide interviewee slowly to the structure provided, without giving them the answer.\n\nThis is the context for the interview, do not read it out loud.\n\"Betacer is a major U.S. electronics manufacturer that offers laptop and desktop PCs, tablets, smartphones, monitors, projectors and cloud solutions for home users, business and government. Given low or negative growth rate in various segments of the electronics industry, Betacer is looking for expansion opportunities and is considering entering the U.S. video- game market. They've reached out to you to get your advice on whether this is a wise idea.\"\n\n<question prompt>\nYou are on the second question in the interview. Read the following question in quotations aloud:\n"Welcome back, here is question #2: What factors would you consider to suggest whether Betacer should enter the video-game market?"\n\nThe candidate is expected to follow these steps:\n1) Do horizontal presentation (optional): "Sure, I'd like to think about purchasing reasons through four areas - marketing/perception, pricing, distribution, and value proposition. On the marketing side, the reasons might be..."\n2) Provide at least 4 ideas\n3) Add color (optional)\n\n<interview context>\nIdeas to explore:\n• Great perception: brand awareness, social pressure, peer recommendations, high ratings\n• Appealing pricing: free trials, affordable pricing, compatibility with existing devices\n• Convenient distribution: easy app store/online access\n• Strong value proposition: popular genres, platform compatibility, social/interactive elements, novelty\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for BCG conducting a case interview.
+Ask: "What factors would you consider to suggest whether Betacer should enter the video-game market?"
+
+Candidate should provide at least 4 factors driving customer adoption.
+
+Key drivers include:
+• Brand perception: awareness, recommendations, ratings
+• Pricing: trials, affordability, compatibility with existing devices
+• Distribution: easy access through app stores
+• Value proposition: popular genres, platform compatibility, social features
+</prompt>"""
 		},
 		{
 			"number": 4,
 			"title": "Synergy Opportunities",
-			"prompt": """<prompt>\nQuestion #4:\n<caseprompt>\nYou are an interviewer for Boston Consulting Group. You are conducting a case interview. Be critical of answers and guide interviewee slowly to the structure provided, without giving them the answer.\n\nThis is the context for the interview, do not read it out loud.\n\"Betacer is a major U.S. electronics manufacturer that offers laptop and desktop PCs, tablets, smartphones, monitors, projectors and cloud solutions for home users, business and government. Given low or negative growth rate in various segments of the electronics industry, Betacer is looking for expansion opportunities and is considering entering the U.S. video- game market. They've reached out to you to get your advice on whether this is a wise idea.\"\n\n<question prompt>\nYou are on the third question in the interview. Read the following question in quotations aloud:\n"Welcome back, let's jump into question #3: What synergies might Betacer capture by entering the video-game market?"\n\nThe candidate is expected to follow these steps:\n1) Do horizontal presentation (optional): "Great question. I'd like to break it down into revenue synergies and cost synergies"\n2) Provide at least 4 ideas\n3) Add color (optional)\n\n<interview context>\nRevenue Synergies:\n• Leverage distribution infrastructure\n• Bundle hardware and games\n• Use brand awareness and co-marketing\n\nCost Synergies:\n• Shared overhead and services\n• Volume discounts through larger sales partnerships\n</prompt>"""
+			"prompt": """<prompt>
+You are an interviewer for BCG conducting a case interview.
+Ask: "What synergies might Betacer capture by entering the video-game market?"
+
+Candidate should identify both revenue and cost synergies.
+
+Potential synergies:
+• Revenue: Leverage distribution, bundle hardware and games, co-marketing
+• Cost: Shared overhead, volume discounts with sales partners
+</prompt>"""
 		}
 	]
-
     }
 }
 
@@ -376,7 +376,6 @@ def get_demo_turn_credentials() -> Any:
         logger.error(f"Error generating demo TURN credentials: {str(e)}")
         
         # Provide fallback TURN credentials that can work in many scenarios
-        # This is not ideal but allows the demo to function when Twilio is unavailable
         logger.info("Using fallback TURN credentials for demo")
         current_time = int(time.time())
         expiration = current_time + 86400  # 24 hours
@@ -395,6 +394,33 @@ def get_demo_turn_credentials() -> Any:
                 }
             ]
         }
+
+def build_interview_instructions(template, question_number):
+    """
+    Helper function to build concise interview instructions
+    """
+    total_questions = len(template['questions'])
+    question = template["questions"][question_number - 1]
+    
+    # Create streamlined instructions
+    instructions = f"""You are an interviewer for a {template['case_type']} case interview about {template['company']} in the {template['industry']} industry.
+
+CASE: {template['description_long']}
+
+QUESTION {question_number}/{total_questions}: {question['title']}
+{question['prompt']}
+
+GUIDELINES:
+• Guide professionally
+• Provide hints only when needed
+• Let candidate work independently
+• Give constructive feedback
+• Keep questions concise and to the point
+• Keep answers concise and to the point
+
+Start the interview immediately.
+"""
+    return instructions, question
 
 @router.get("/interviews/{case_type}/questions/{question_number}/token", response_model=Dict[str, Any])
 def get_demo_question_token(
@@ -441,28 +467,17 @@ def get_demo_question_token(
     
     # Get the specific question
     try:
-        question = template["questions"][question_number - 1]
+        question_index = question_number - 1
+        if question_index >= len(template["questions"]):
+            raise IndexError(f"Question number {question_number} not found")
     except IndexError:
         raise HTTPException(
             status_code=404,
             detail=f"Question number {question_number} not found"
         )
     
-    # Build customized instructions for this specific demo question
-    total_questions = len(template['questions'])
-    instructions = f"""You are an interviewer for a {template['case_type']} case interview about {template['company']} in the {template['industry']} industry.
-
-CASE CONTEXT: {template['description_long']}
-
-QUESTION {question_number}/{total_questions}: {question['title']}
-{question['prompt']}
-
-INTERVIEW GUIDELINES:
-• Guide the candidate professionally through this question
-• Provide hints only when the candidate is stuck
-• Let the candidate work through the problem independently
-• Give constructive feedback on their approach
-"""
+    # Build instructions using helper function
+    instructions, _ = build_interview_instructions(template, question_number)
     
     # Get the OpenAI API key
     openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -706,7 +721,7 @@ def get_direct_token(
     """
     logger.info(f"Direct token requested for case_type={case_type}, question={question_number}, ttl={ttl}")
     
-    # Special handling for "442" and any invalid case types - map them to "market-entry"
+    # Special handling for invalid case types - map them to "market-entry"
     if case_type not in DEMO_TEMPLATES:
         logger.warning(f"Invalid case type '{case_type}' requested, falling back to 'market-entry'")
         case_type = "market-entry"
@@ -714,26 +729,9 @@ def get_direct_token(
     template = DEMO_TEMPLATES[case_type]
     interview_id = DEMO_INTERVIEWS[case_type]
     
-    # Get the specific question (with bounds checking)
-    question_index = max(0, min(question_number - 1, len(template["questions"]) - 1))
-    question = template["questions"][question_index]
+    # Build instructions using helper function
+    instructions, question = build_interview_instructions(template, min(question_number, 4))
     logger.info(f"Using question: {question['title']}")
-    
-    # Build customized instructions for this specific demo question
-    total_questions = len(template['questions'])
-    instructions = f"""You are an interviewer for a {template['case_type']} case interview about {template['company']} in the {template['industry']} industry.
-
-CASE CONTEXT: {template['description_long']}
-
-QUESTION {question_number}/{total_questions}: {question['title']}
-{question['prompt']}
-
-INTERVIEW GUIDELINES:
-• Guide the candidate professionally through this question
-• Provide hints only when the candidate is stuck
-• Let the candidate work through the problem independently
-• Give constructive feedback on their approach
-"""
     
     # Get the OpenAI API key
     openai_api_key = os.getenv("OPENAI_API_KEY")
