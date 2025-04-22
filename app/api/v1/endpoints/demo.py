@@ -362,28 +362,89 @@ def get_demo_interview(case_type: str = Path(..., description="Demo case type: m
     }
 
 @router.get("/turn-credentials", response_model=Dict[str, Any])
-def get_demo_turn_credentials() -> Any:
+def get_demo_turn_credentials(ttl: int = Query(86400, ge=300, le=604800, description="Token time-to-live in seconds")) -> Any:
     """
     Get TURN server credentials for WebRTC in demo mode
+    
+    Args:
+        ttl: Time to live in seconds (default: 24 hours, min: 5 minutes, max: 7 days)
+        
+    Returns:
+        Dictionary containing TURN server credentials
     """
+    logger.info(f"Generating demo TURN credentials with TTL: {ttl}")
+    
     try:
         # Create a guest username for the demo
         username = f"demo-user-{secrets.token_hex(4)}"
         
-        # Use the same credential generation as the main app but with the demo username
-        return credential_service.generate_turn_credentials(username=username)
-    except Exception as e:
-        logger.error(f"Error generating demo TURN credentials: {str(e)}")
+        # First try to use the credential service
+        logger.info(f"Attempting to use credential service with username: {username}")
+        try:
+            return credential_service.generate_turn_credentials(username=username, ttl=ttl)
+        except Exception as svc_error:
+            logger.error(f"Error using credential service: {str(svc_error)}")
+            # Continue to fallback method
+        
+        # Try direct Twilio API call if credential service fails
+        try:
+            # Get Twilio credentials from environment variables
+            account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+            auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+            
+            if account_sid and auth_token:
+                logger.info(f"Using Twilio account SID: {account_sid[:6]}...{account_sid[-4:]}")
+                
+                # Twilio API endpoint for Network Traversal Service
+                url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Tokens.json"
+                
+                # Set TTL for Twilio token (in seconds)
+                data = {"Ttl": str(ttl)}
+                
+                # Make request to Twilio API
+                import requests
+                response = requests.post(url, data=data, auth=(account_sid, auth_token), timeout=10)
+                
+                # Check if request was successful
+                if response.status_code in [200, 201]:
+                    token_data = response.json()
+                    
+                    # Extract TURN/STUN server information
+                    ice_servers = token_data.get("ice_servers", [])
+                    
+                    if ice_servers:
+                        logger.info(f"Successfully generated Twilio TURN credentials with {len(ice_servers)} ice servers")
+                        
+                        # Return formatted credentials
+                        return {
+                            "username": token_data.get("username", username),
+                            "password": token_data.get("password", ""),
+                            "ttl": int(token_data.get("ttl", ttl)),
+                            "expiration": int(time.time()) + ttl,
+                            "ice_servers": ice_servers
+                        }
+            else:
+                logger.warning("Twilio credentials not found in environment variables")
+        except Exception as twilio_error:
+            logger.error(f"Error making direct Twilio API call: {str(twilio_error)}")
+            # Continue to fallback
         
         # Provide fallback TURN credentials that can work in many scenarios
-        logger.info("Using fallback TURN credentials for demo")
+        logger.info("Using fallback TURN/STUN credentials")
         current_time = int(time.time())
-        expiration = current_time + 86400  # 24 hours
+        expiration = current_time + ttl
         
+        # Return a comprehensive fallback that works in most scenarios
         return {
             "username": username,
-            "ttl": 86400,
+            "password": "demo_credential",
+            "ttl": ttl,
             "expiration": expiration,
+            "urls": [
+                "stun:stun.l.google.com:19302",
+                "stun:stun1.l.google.com:19302",
+                "stun:stun2.l.google.com:19302"
+            ],
             "ice_servers": [
                 {
                     "urls": [
@@ -394,6 +455,12 @@ def get_demo_turn_credentials() -> Any:
                 }
             ]
         }
+    except Exception as e:
+        logger.error(f"Unhandled error generating demo TURN credentials: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to generate TURN credentials"
+        )
 
 def build_interview_instructions(template, question_number):
     """
